@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>batmon</name>
-  <version>0.0.1</version>
+  <version>0.0.2</version>
   <description>Monitors batteries</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
