@@ -1,16 +1,10 @@
-/*
- * rosserial ADC Example
- *
- * This is a poor man's Oscilloscope.  It does not have the sampling
- * rate or accuracy of a commerical scope, but it is great to get
- * an analog value into ROS in a pinch.
- */
+
 #define USE_USBCON 1
 #include <ros.h>
 #include <batmon/bat_data.h>
 #include <std_msgs/UInt8.h>
 
-ros::NodeHandle_<ArduinoHardware, 10, 10, 200, 200> nh;
+ros::NodeHandle_<ArduinoHardware, 10, 10, 100, 100> nh; //10,10,200,200
 
 #include <Wire.h>
 #include "ina219.h"
@@ -21,14 +15,14 @@ INA219 monitor3;
 INA219 monitor4;
 
 //Pin Defines
-#define B1_C 11 //PB7 - PB0
-#define B1_D 8 //PB4
-#define B2_C 9 //PB5
-#define B2_D 10 //PB6
-#define B3_C 12 //PD6
-#define B3_D 6 //PD7
-#define B4_C 4 //PD4
-#define B4_D 7 //PE6 - PD5
+#define B3_C 5  // PC6(PB0)
+#define B3_D 8  // PB4
+#define B4_C 9  // PB5
+#define B4_D 11 // PB7
+#define B2_C 12 // PD6
+#define B2_D 6  // PD7
+#define B1_C 4  // PD4
+#define B1_D 7  // PE6
 
 //voltage,current,power,temp feedback from each of 4 batteries
 batmon::bat_data data_msg;
@@ -148,20 +142,20 @@ void setup()
   nh.subscribe(sub4);
 
   //INA219 coms
-  monitor1.begin(64);
-  monitor2.begin(65);
-  monitor3.begin(66);
-  monitor4.begin(67);
-  monitor1.configure(1, 1, 13, 13, 7); //0-32V, 80mV range
-  monitor2.configure(1, 1, 13, 13, 7); //0-32V, 80mV range,
-  monitor3.configure(1, 1, 13, 13, 7); //0-32V, 80mV range,
-  monitor4.configure(1, 1, 13, 13, 7); //0-32V, 80mV range,
+  monitor1.begin(72);
+  monitor2.begin(76);
+  monitor3.begin(64);
+  monitor4.begin(68);
+  monitor1.configure(1, 2, 3, 3, 7); //0-32V, 160mV range
+  monitor2.configure(1, 2, 3, 3, 7); //0-32V, 160mV range,
+  monitor3.configure(1, 2, 3, 3, 7); //0-32V, 160mV range,
+  monitor4.configure(1, 2, 3, 3, 7); //0-32V, 160mV range,
 
 
-  monitor1.calibrate(0.02, 0.08, 17, 4);
-  monitor2.calibrate(0.02, 0.08, 17, 4);
-  monitor3.calibrate(0.02, 0.08, 17, 4);
-  monitor4.calibrate(0.02, 0.08, 17, 4);
+  monitor1.calibrate(0.02, 0.12, 26, 5);
+  monitor2.calibrate(0.02, 0.12, 26, 5);
+  monitor3.calibrate(0.02, 0.12, 26, 5);
+  monitor4.calibrate(0.02, 0.12, 26, 5);
 }
 
 //We average the analog reading to elminate some of the noise
@@ -177,27 +171,31 @@ void loop()
 {
 
   // readings in mV, mA, mW and degrees C.
-  data_msg.Bat1_Volt  = abs(monitor1.busVoltage())*1000;
-  data_msg.Bat1_Curr  = abs(monitor1.shuntCurrent()) * 1000;
-  data_msg.Bat1_Power = monitor1.busPower() * 1000;
+  data_msg.Bat1_Volt  = abs(monitor1.busVoltage()*1000.0);
+  data_msg.Bat1_Curr  = abs(monitor1.shuntCurrent() * 1000.0);
+  data_msg.Bat1_Power = abs(monitor1.busPower() * 1000.0);
   data_msg.Bat1_Temp  = 0;
-  data_msg.Bat2_Volt  = abs(monitor2.busVoltage())*1000;
-  data_msg.Bat2_Curr  = abs(monitor2.shuntCurrent()) * 1000;
-  data_msg.Bat2_Power = monitor2.busPower() * 1000;
+  data_msg.Bat2_Volt  = abs(monitor2.busVoltage()*1000.0);
+  data_msg.Bat2_Curr  = abs(monitor2.shuntCurrent() * 1000.0);
+  data_msg.Bat2_Power = abs(monitor2.busPower() * 1000.0);
   data_msg.Bat2_Temp  = 0;
-  data_msg.Bat3_Volt  = abs(monitor3.busVoltage())*1000;
-  data_msg.Bat3_Curr  = abs(monitor3.shuntCurrent()) * 1000;
-  data_msg.Bat3_Power = monitor3.busPower() * 1000;
+  data_msg.Bat3_Volt  = abs((monitor3.busVoltage()*1000.0));
+  if (data_msg.Bat3_Volt > 4000) { data_msg.Bat3_Volt = (data_msg.Bat3_Volt*(-0.001) + 32.525)*1000;} //fix for offset voltage
+  data_msg.Bat3_Curr  = abs(monitor3.shuntCurrent() * 1000.0);
+  if (data_msg.Bat3_Curr > 1000) { data_msg.Bat3_Curr += 1000;} //fix for offset current
+  data_msg.Bat3_Power = abs(monitor3.busPower() * 1000.0);
   data_msg.Bat3_Temp  = 0;
-  data_msg.Bat4_Volt  = abs(monitor4.busVoltage())*1000;
-  data_msg.Bat4_Curr  = abs(monitor4.shuntCurrent()) * 1000;
-  data_msg.Bat4_Power = monitor4.busPower() * 1000;
+  data_msg.Bat4_Volt  = abs((monitor4.busVoltage()*1000.0));
+  if (data_msg.Bat4_Volt > 4000) { data_msg.Bat4_Volt = (data_msg.Bat4_Volt*(-0.001) + 32.525)*1000;} //fix for offset voltage
+  data_msg.Bat4_Curr  = abs(monitor4.shuntCurrent() * 1000.0);
+  if (data_msg.Bat4_Curr > 1000) { data_msg.Bat4_Curr += 1000;} //fix for offset current
+  data_msg.Bat4_Power = abs(monitor4.busPower() * 1000.0);
   data_msg.Bat4_Temp  = 0;
 
   p.publish(&data_msg);
 
   nh.spinOnce();
   
-  delay(100);
+  delay(200);
 }
 
